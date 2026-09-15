@@ -1,0 +1,13 @@
+// Copyright (c) 2026 Naawaakrit
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License v3.0.
+package main
+
+import (
+	ui "ihertz/ui" //ชื่อไฟล์ "ชื่อ MOD / ชื่อ โฟรเดอร์" **แล้วดึงมาใช้
+)
+
+func main() {
+
+	ui.CreateWindow()
+}
