@@ -85,7 +85,7 @@ func getCPUhardware(cpuIndex int) (fyne.CanvasObject, uint64, uint64) {
 }
 
 // getCPUFreqInfo อ่านข้อมูลความถี่ของ CPU
-func getCPUFreqUpdate(cpuIndex int) (fyne.CanvasObject, uint64, uint64) {
+func getCPUFreqUpdate(cpuIndex int, stop <-chan struct{}) (fyne.CanvasObject, uint64, uint64) {
 
 	base := cpuFreqBase(cpuIndex) + "/"
 	files := []struct {
@@ -148,8 +148,13 @@ func getCPUFreqUpdate(cpuIndex int) (fyne.CanvasObject, uint64, uint64) {
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
-		for range ticker.C {
-			update()
+		for {
+			select {
+			case <-ticker.C:
+				update()
+			case <-stop:
+				return
+			}
 		}
 	}()
 
@@ -159,13 +164,13 @@ func getCPUFreqUpdate(cpuIndex int) (fyne.CanvasObject, uint64, uint64) {
 // ============================================================================
 // เพิ่ม label ตามจำนวนคอร์
 // ============================================================================
-func sysCPUFreqUpdate() fyne.CanvasObject {
+func sysCPUFreqUpdate(stop <-chan struct{}) fyne.CanvasObject {
 	coreCount := CpuCoreCount()
 	//box := container.NewVBox()
 	box := container.NewGridWithColumns(2)
 
 	for i := 0; i < coreCount; i++ {
-		coreInfo, _, _ := getCPUFreqUpdate(i)
+		coreInfo, _, _ := getCPUFreqUpdate(i, stop)
 		box.Add(coreInfo)
 	}
 	if coreCount == 0 {
@@ -450,7 +455,8 @@ func newPercent(freq_Slider *widget.Slider, percent float64) {
 func slider() (*widget.Slider, *widget.Slider, *widget.Label, *widget.Label, *widget.Entry, *widget.Entry) {
 
 	_, val_min, val_max := getCPUhardware(0)
-	_, cur_min, cur_max := getCPUFreqUpdate(0)
+	cur_min := readCPUFreqValue(0, "scaling_min_freq")
+	cur_max := readCPUFreqValue(0, "scaling_max_freq")
 
 	entry_min := widget.NewEntry()
 	entry_min.SetText(strconv.FormatUint(cur_min, 10)) //10 คือแปลงเป็นเลขฐาน 10
@@ -515,6 +521,18 @@ func slider() (*widget.Slider, *widget.Slider, *widget.Label, *widget.Label, *wi
 	}
 
 	return min_freq_Slider, max_freq_Slider, min_freq_Label, max_freq_Label, entry_min, entry_max
+}
+
+func readCPUFreqValue(cpuIndex int, name string) uint64 {
+	data, err := os.ReadFile(cpuFreqBase(cpuIndex) + "/" + name)
+	if err != nil {
+		return 0
+	}
+	value, err := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return value
 }
 
 func onButtonClickApply(w fyne.Window, selected []bool, min_freq_Slider, max_freq_Slider *widget.Slider, governorsST *widget.RadioGroup) {
@@ -649,9 +667,9 @@ func writeCPUText(path, value string) error {
 }
 
 // ส่งออก
-func CpuControl(w fyne.Window) fyne.CanvasObject {
+func CpuControl(w fyne.Window, stop <-chan struct{}) fyne.CanvasObject {
 
-	perCore := sysCPUFreqUpdate()
+	perCore := sysCPUFreqUpdate(stop)
 	info, _, _ := getCPUhardware(0)
 	slider_min, slider_max, label_min, label_max, entry_min, entry_max := slider()
 

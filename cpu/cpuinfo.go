@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image/color"
 	"log"
+	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -77,6 +78,8 @@ type StCPUData struct {
 type CPUMonitor struct {
 	ticker   *time.Ticker
 	callback func(StCPUData)
+	stop     chan struct{}
+	stopOnce sync.Once
 }
 
 // สร้าง instance ใหม่
@@ -84,45 +87,58 @@ func NewCPUMonitor(interval time.Duration, callback func(StCPUData)) *CPUMonitor
 	return &CPUMonitor{
 		ticker:   time.NewTicker(interval),
 		callback: callback,
+		stop:     make(chan struct{}),
 	}
+}
+
+func (m *CPUMonitor) Stop() {
+	m.stopOnce.Do(func() {
+		m.ticker.Stop()
+		close(m.stop)
+	})
 }
 
 // เริ่ม monitoring
 func (m *CPUMonitor) Start() {
 	go func() {
-		for range m.ticker.C {
+		for {
+			select {
+			case <-m.ticker.C:
 
-			percentTotal := CpuPercentAVG()
-			percentPerCore := CpuPercentPercore()
-			//จัดเรียง usage
+				percentTotal := CpuPercentAVG()
+				percentPerCore := CpuPercentPercore()
+				//จัดเรียง usage
 
-			usagepercentTotal := fmt.Sprintf("%.2f %%\n", percentTotal[0]) //percentTotal[0]			// แสดง usage ต่อ core
-			var usagepercentPerCore string
-			//usagepercentPerCore += "[ Usage PerCore ]\n"
-			for i, pc := range percentPerCore {
-				usagepercentPerCore += fmt.Sprintf("Core [ %d ] : %.2f %%\n", i, pc)
-			}
-
-			var timesTotalAvg string
-			var timesSec string
-			//timesSec += "[ ข้อมูลดิบ ]"
-			var timesHms string
-			//timesHms += "[ แปลงเป็นเวลาสากล ]"
-
-			if len(percentTotal) > 0 {
-
-				data := StCPUData{
-					//Usage: usage,
-					//Timesusage: timesusage,
-					UsagepercentTotal:         usagepercentTotal,
-					UsagepercentPerCoreSTRING: usagepercentPerCore,
-					TimesTotalAvg:             timesTotalAvg,
-					TimesSec:                  timesSec,
-					TimesHms:                  timesHms,
+				usagepercentTotal := fmt.Sprintf("%.2f %%\n", percentTotal[0]) //percentTotal[0]			// แสดง usage ต่อ core
+				var usagepercentPerCore string
+				//usagepercentPerCore += "[ Usage PerCore ]\n"
+				for i, pc := range percentPerCore {
+					usagepercentPerCore += fmt.Sprintf("Core [ %d ] : %.2f %%\n", i, pc)
 				}
 
-				m.callback(data)
+				var timesTotalAvg string
+				var timesSec string
+				//timesSec += "[ ข้อมูลดิบ ]"
+				var timesHms string
+				//timesHms += "[ แปลงเป็นเวลาสากล ]"
 
+				if len(percentTotal) > 0 {
+
+					data := StCPUData{
+						//Usage: usage,
+						//Timesusage: timesusage,
+						UsagepercentTotal:         usagepercentTotal,
+						UsagepercentPerCoreSTRING: usagepercentPerCore,
+						TimesTotalAvg:             timesTotalAvg,
+						TimesSec:                  timesSec,
+						TimesHms:                  timesHms,
+					}
+
+					m.callback(data)
+
+				}
+			case <-m.stop:
+				return
 			}
 
 		}
@@ -131,7 +147,7 @@ func (m *CPUMonitor) Start() {
 }
 
 // - // กราฟ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-func grid() fyne.CanvasObject {
+func grid(stop <-chan struct{}) fyne.CanvasObject {
 	coreCount := CpuCoreCount()
 
 	colors := []color.RGBA{
@@ -157,23 +173,29 @@ func grid() fyne.CanvasObject {
 	grid := container.NewGridWithColumns(1, items...)
 
 	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
 		for {
-			values := CpuPercentPercore()
+			select {
+			case <-ticker.C:
+				values := CpuPercentPercore()
 
-			for i, c := range cards {
-				if i < len(values) {
-					v := values[i]
-					c.graph.Update(v)
-					c.val.Set(v)
+				for i, c := range cards {
+					if i < len(values) {
+						v := values[i]
+						c.graph.Update(v)
+						c.val.Set(v)
+					}
 				}
+
+				fyne.Do(func() {
+					for _, c := range cards {
+						c.raster.Refresh()
+					}
+				})
+			case <-stop:
+				return
 			}
-
-			fyne.Do(func() {
-				for _, c := range cards {
-					c.raster.Refresh()
-				}
-			})
-			time.Sleep(100 * time.Millisecond)
 		}
 
 	}()
@@ -184,6 +206,8 @@ func grid() fyne.CanvasObject {
 // CpuTabs
 // ============================================================================
 func CpuTabs(w fyne.Window) fyne.CanvasObject {
+	stop := make(chan struct{})
+	var stopOnce sync.Once
 
 	//cpuUsagePage//
 	usagepercentTotalLabel := widget.NewLabel("usagepercentTotalLabel...")
@@ -209,7 +233,7 @@ func CpuTabs(w fyne.Window) fyne.CanvasObject {
 
 	monitor.Start() // เริ่ม monitoring
 
-	grid := grid()
+	grid := grid(stop)
 	//layout
 	Grid := container.NewBorder(nil, nil, nil, nil, grid)
 
@@ -229,7 +253,15 @@ func CpuTabs(w fyne.Window) fyne.CanvasObject {
 		),
 	)
 
-	cpuControlPage := CpuControl(w)
+	cpuControlPage := CpuControl(w, stop)
+	monitorStop := func() {
+		stopOnce.Do(func() {
+			close(stop)
+			monitor.Stop()
+			w.Close()
+		})
+	}
+	w.SetCloseIntercept(monitorStop)
 
 	return container.NewAppTabs(
 		container.NewTabItem("Control", container.NewScroll(cpuControlPage)),
