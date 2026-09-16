@@ -8,6 +8,7 @@ import (
 	"image/color"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -22,8 +23,17 @@ import (
 
 // -------------------------------------------------------------------------------------------
 
+func cpuFreqBase(cpuIndex int) string {
+	path := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq", cpuIndex)
+	resolved, err := filepath.EvalSymlinks(path)
+	if err == nil {
+		return resolved
+	}
+	return path
+}
+
 func getCPUhardware(cpuIndex int) (fyne.CanvasObject, uint64, uint64) {
-	base := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/", cpuIndex)
+	base := cpuFreqBase(cpuIndex) + "/"
 	files := []struct {
 		file  string
 		label string
@@ -77,7 +87,7 @@ func getCPUhardware(cpuIndex int) (fyne.CanvasObject, uint64, uint64) {
 // getCPUFreqInfo อ่านข้อมูลความถี่ของ CPU
 func getCPUFreqUpdate(cpuIndex int) (fyne.CanvasObject, uint64, uint64) {
 
-	base := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/", cpuIndex)
+	base := cpuFreqBase(cpuIndex) + "/"
 	files := []struct {
 		file  string
 		label string
@@ -275,7 +285,7 @@ func getSelectedCoresText(selected []bool) (string, []int) {
 // เรียกไฟล์ govenors
 // ============================================================================
 func GetGovernors() ([]string, error) {
-	data, err := os.ReadFile("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors")
+	data, err := os.ReadFile(cpuFreqBase(0) + "/scaling_available_governors")
 	if err != nil {
 		return nil, err
 	}
@@ -590,32 +600,49 @@ func ApplyCPUSettingsFromArgs(args []string) error {
 		return fmt.Errorf("governor ไม่ถูกต้อง: %s", governor)
 	}
 
+	policyCores := make(map[string][]int)
 	for _, value := range strings.Split(args[3], ",") {
 		core, err := strconv.Atoi(value)
 		if err != nil || core < 0 {
 			return fmt.Errorf("หมายเลข CPU ไม่ถูกต้อง: %s", value)
 		}
-		base := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq", core)
+		base := cpuFreqBase(core)
+		policyCores[base] = append(policyCores[base], core)
+	}
+
+	for base, cores := range policyCores {
 		if err := writeCPUSetting(base+"/scaling_min_freq", freqMin); err != nil {
-			return err
+			return fmt.Errorf("ตั้งค่าความถี่ต่ำสุดของ CPU %s ไม่ได้: %w", strings.Join(intsToStrings(cores), ", "), err)
 		}
 		if err := writeCPUSetting(base+"/scaling_max_freq", freqMax); err != nil {
-			return err
+			return fmt.Errorf("ตั้งค่าความถี่สูงสุดของ CPU %s ไม่ได้: %w", strings.Join(intsToStrings(cores), ", "), err)
 		}
-		if err := os.WriteFile(base+"/scaling_governor", []byte(governor), 0); err != nil {
-			return fmt.Errorf("ตั้ง governor ของ cpu%d ไม่ได้: %w", core, err)
+		if err := writeCPUText(base+"/scaling_governor", governor); err != nil {
+			return fmt.Errorf("ตั้ง governor ของ CPU %s ไม่ได้: %w", strings.Join(intsToStrings(cores), ", "), err)
 		}
 	}
 	return nil
 }
 
+func intsToStrings(values []int) []string {
+	result := make([]string, len(values))
+	for idx, value := range values {
+		result[idx] = strconv.Itoa(value)
+	}
+	return result
+}
+
 func writeCPUSetting(path string, value uint64) error {
+	return writeCPUText(path, strconv.FormatUint(value, 10))
+}
+
+func writeCPUText(path, value string) error {
 	file, err := os.OpenFile(path, os.O_WRONLY, 0)
 	if err != nil {
 		return fmt.Errorf("เปิด %s ไม่ได้: %w", path, err)
 	}
 	defer file.Close()
-	if _, err := file.WriteString(strconv.FormatUint(value, 10)); err != nil {
+	if _, err := file.WriteString(value); err != nil {
 		return fmt.Errorf("เขียน %s ไม่ได้: %w", path, err)
 	}
 	return nil
