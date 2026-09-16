@@ -507,7 +507,7 @@ func slider() (*widget.Slider, *widget.Slider, *widget.Label, *widget.Label, *wi
 	return min_freq_Slider, max_freq_Slider, min_freq_Label, max_freq_Label, entry_min, entry_max
 }
 
-func onButtonClickApply(selected []bool, min_freq_Slider, max_freq_Slider *widget.Slider, governorsST *widget.RadioGroup) {
+func onButtonClickApply(w fyne.Window, selected []bool, min_freq_Slider, max_freq_Slider *widget.Slider, governorsST *widget.RadioGroup) {
 
 	// อ่านค่าจากวิดเจต slider โดยตรง
 	freq_min := uint64(min_freq_Slider.Value)
@@ -521,13 +521,13 @@ func onButtonClickApply(selected []bool, min_freq_Slider, max_freq_Slider *widge
 		}
 	}
 	if len(cores) == 0 {
-		fmt.Println("ไม่พบคอร์ที่เลือกให้ปรับค่า")
+		dialog.ShowInformation("ยังไม่ได้เลือก CPU", "กรุณาเลือก CPU อย่างน้อยหนึ่งคอร์ก่อนกด Apply", w)
 		return
 	}
 
 	executable, err := os.Executable()
 	if err != nil {
-		fmt.Println("ไม่สามารถค้นหาไฟล์โปรแกรม:", err)
+		dialog.ShowError(fmt.Errorf("ไม่สามารถค้นหาไฟล์โปรแกรม: %w", err), w)
 		return
 	}
 
@@ -540,10 +540,18 @@ func onButtonClickApply(selected []bool, min_freq_Slider, max_freq_Slider *widge
 		)
 		err := cmd.Run()
 		if err != nil {
-			fmt.Println("ล้มเหลว:", err)
+			fyne.Do(func() {
+				dialog.ShowError(fmt.Errorf("ปรับค่าความถี่ CPU ไม่สำเร็จ: %w", err), w)
+			})
 			return
 		}
-		fmt.Println("สำเร็จ", "[ min ]", freq_min, "kHz", "[ max ]", freq_max, "kHz")
+		fyne.Do(func() {
+			dialog.ShowInformation(
+				"ปรับค่า CPU สำเร็จ",
+				fmt.Sprintf("ตั้งค่า %d-%d kHz สำหรับ CPU %s แล้ว", freq_min, freq_max, strings.Join(cores, ", ")),
+				w,
+			)
+		})
 	}()
 
 }
@@ -634,7 +642,7 @@ func CpuControl(w fyne.Window) fyne.CanvasObject {
 	governors, governorsSt := GovernorscheckBox()
 
 	apply := widget.NewButton("Apply", func() {
-		onButtonClickApply(selected, slider_min, slider_max, governorsSt)
+		onButtonClickApply(w, selected, slider_min, slider_max, governorsSt)
 	})
 
 	//min
