@@ -514,26 +514,30 @@ func onButtonClickApply(selected []bool, min_freq_Slider, max_freq_Slider *widge
 	freq_max := uint64(max_freq_Slider.Value)
 	governorsSt := governorsST.Selected
 
+	var cores []string
+	for idx, sel := range selected {
+		if sel {
+			cores = append(cores, strconv.Itoa(idx))
+		}
+	}
+	if len(cores) == 0 {
+		fmt.Println("ไม่พบคอร์ที่เลือกให้ปรับค่า")
+		return
+	}
+
+	executable, err := os.Executable()
+	if err != nil {
+		fmt.Println("ไม่สามารถค้นหาไฟล์โปรแกรม:", err)
+		return
+	}
+
 	go func() { // รันใน goroutine ไม่ให้ UI ค้าง
-		var scriptLines []string
-		for idx, sel := range selected {
-			if !sel {
-				continue
-			}
-			scriptLines = append(scriptLines, fmt.Sprintf("echo %d | tee /sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", freq_max, idx))
-			scriptLines = append(scriptLines, fmt.Sprintf("echo %d | tee /sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", freq_min, idx))
-			scriptLines = append(scriptLines, fmt.Sprintf("echo %s | tee /sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", governorsSt, idx))
-		}
-
-		if len(scriptLines) == 0 {
-			//ฟังชั้น popup++
-			fmt.Println("ไม่พบคอร์ที่เลือกให้ปรับค่า")
-			return
-		}
-
-		script := strings.Join(scriptLines, "\n")
-
-		cmd := exec.Command("pkexec", "bash", "-c", script)
+		cmd := exec.Command("pkexec", executable, "--apply-cpu",
+			strconv.FormatUint(freq_min, 10),
+			strconv.FormatUint(freq_max, 10),
+			governorsSt,
+			strings.Join(cores, ","),
+		)
 		err := cmd.Run()
 		if err != nil {
 			fmt.Println("ล้มเหลว:", err)
@@ -542,6 +546,71 @@ func onButtonClickApply(selected []bool, min_freq_Slider, max_freq_Slider *widge
 		fmt.Println("สำเร็จ", "[ min ]", freq_min, "kHz", "[ max ]", freq_max, "kHz")
 	}()
 
+}
+
+// ApplyCPUSettingsFromArgs เป็นโหมด helper ที่ pkexec เรียกด้วยสิทธิ์ root
+func ApplyCPUSettingsFromArgs(args []string) error {
+	if len(args) != 4 {
+		return fmt.Errorf("รูปแบบคำสั่งไม่ถูกต้อง")
+	}
+
+	freqMin, err := strconv.ParseUint(args[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("ความถี่ต่ำสุดไม่ถูกต้อง: %w", err)
+	}
+	freqMax, err := strconv.ParseUint(args[1], 10, 64)
+	if err != nil {
+		return fmt.Errorf("ความถี่สูงสุดไม่ถูกต้อง: %w", err)
+	}
+	if freqMin == 0 || freqMin > freqMax {
+		return fmt.Errorf("ช่วงความถี่ไม่ถูกต้อง")
+	}
+
+	governor := args[2]
+	governors, err := GetGovernors()
+	if err != nil {
+		return fmt.Errorf("อ่าน governor ไม่ได้: %w", err)
+	}
+	validGovernor := false
+	for _, available := range governors {
+		if available == governor {
+			validGovernor = true
+			break
+		}
+	}
+	if !validGovernor {
+		return fmt.Errorf("governor ไม่ถูกต้อง: %s", governor)
+	}
+
+	for _, value := range strings.Split(args[3], ",") {
+		core, err := strconv.Atoi(value)
+		if err != nil || core < 0 {
+			return fmt.Errorf("หมายเลข CPU ไม่ถูกต้อง: %s", value)
+		}
+		base := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq", core)
+		if err := writeCPUSetting(base+"/scaling_min_freq", freqMin); err != nil {
+			return err
+		}
+		if err := writeCPUSetting(base+"/scaling_max_freq", freqMax); err != nil {
+			return err
+		}
+		if err := os.WriteFile(base+"/scaling_governor", []byte(governor), 0); err != nil {
+			return fmt.Errorf("ตั้ง governor ของ cpu%d ไม่ได้: %w", core, err)
+		}
+	}
+	return nil
+}
+
+func writeCPUSetting(path string, value uint64) error {
+	file, err := os.OpenFile(path, os.O_WRONLY, 0)
+	if err != nil {
+		return fmt.Errorf("เปิด %s ไม่ได้: %w", path, err)
+	}
+	defer file.Close()
+	if _, err := file.WriteString(strconv.FormatUint(value, 10)); err != nil {
+		return fmt.Errorf("เขียน %s ไม่ได้: %w", path, err)
+	}
+	return nil
 }
 
 // ส่งออก
