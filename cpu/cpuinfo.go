@@ -15,14 +15,14 @@ import (
 	"github.com/shirou/gopsutil/v3/cpu"
 )
 
-// จำนวนคอร์
+// จำนวน logical CPU ที่ตรงกับดัชนี cpuN ของ Linux และข้อมูล per-core จาก gopsutil
 func CpuCoreCount() int {
-	physicalCore, err := cpu.Counts(false) //core
+	logicalCPU, err := cpu.Counts(true)
 	if err != nil {
 		log.Println(err)
-		return (0)
+		return 0
 	}
-	return physicalCore //core จริง
+	return logicalCPU
 }
 
 // จำนวนเทรด
