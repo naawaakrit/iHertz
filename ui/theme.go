@@ -14,128 +14,78 @@ type MyTheme struct{}
 
 func (m MyTheme) Color(name fyne.ThemeColorName, v fyne.ThemeVariant) color.Color {
 	if v == theme.VariantDark {
-		//theme black
 		switch name {
-		//🎨 สีหลัก
-		case theme.ColorNameBackground: //→ พื้นหลังหลักของแอพ สีพื้นหลังสุด *ถ้าไม่มีภาพขั้นกลาง
-			return color.NRGBA{46, 46, 51, 255}
-
-		case theme.ColorNameForeground: //→ สีตัวอักษร/ไอคอน
-			return color.White
-
-			//🔘 ปุ่ม
-		case theme.ColorNameButton: //→ สีปุ่มปกติ
-			return color.NRGBA{200, 200, 200, 50}
-
-		case theme.ColorNamePressed: //→ ตอนกด***
-			return color.NRGBA{255, 246, 181, 255}
-
-		case theme.ColorNameHover: //→ ตอนเอาเมาส์ชี้
-			return color.NRGBA{255, 255, 255, 50}
-
-		case theme.ColorNameDisabledButton: //→ ปุ่มที่กดไม่ได้***
-			return color.NRGBA{255, 246, 181, 255}
-
-		// 🧠 สถานะทั่วไป
-		case theme.ColorNameDisabled: // → สีของ element ที่ใช้ไม่ได้***
-			return color.NRGBA64{255, 0, 0, 255}
-
-		case theme.ColorNameFocus: // → ตอนถูกเลือก / โฟกัส***
-			return color.NRGBA{50, 50, 50, 40}
-
-		// 🌈 สีหลักของแอพ
-		case theme.ColorNamePrimary: // → สีเด่น (progress bar / highlight / ปุ่มสำคัญ)
-			return color.NRGBA{255, 246, 181, 255} //สีของ taps รวมอยู่ด้วย
-
-			//🧾 Input / UI
-		case theme.ColorNameInputBackground: // → พื้นหลังช่อง input / select
-			return color.NRGBA{200, 200, 200, 50}
-
-		case theme.ColorNamePlaceHolder: // → ตัวอักษร placeholder***
-			return color.NRGBA{255, 246, 181, 255}
-
-		// 🪟 Layer / พื้นหลังพิเศษ
-		case theme.ColorNameMenuBackground: // → เมนู (dropdown / popup)
-			return color.NRGBA{255, 255, 255, 50}
-
-		case theme.ColorNameOverlayBackground: // → dialog / overlay
-			return color.NRGBA{46, 46, 51, 255}
-
-		case theme.ColorNameShadow: // → เงา
-			return color.NRGBA{255, 246, 181, 100}
-
-			//⚠️ สถานะพิเศษ
-		case theme.ColorNameError: // → error (แดง)
-			return color.NRGBA{255, 0, 0, 255}
-
-		case theme.ColorNameSuccess: // → success (เขียว)
-			return color.NRGBA{0, 255, 0, 255}
-
-		case theme.ColorNameWarning: // → warning (เหลือง/ส้ม)
-			return color.NRGBA{255, 165, 255, 255}
-
+		case theme.ColorNameBackground:
+			return color.NRGBA{13, 17, 23, 255}
+		case theme.ColorNameForeground:
+			return color.NRGBA{245, 247, 250, 255}
+		case theme.ColorNameButton:
+			return color.NRGBA{31, 41, 55, 255}
+		case theme.ColorNamePressed:
+			return color.NRGBA{0, 210, 235, 255}
+		case theme.ColorNameHover:
+			return color.NRGBA{255, 255, 255, 24}
+		case theme.ColorNameDisabledButton:
+			return color.NRGBA{55, 65, 81, 255}
+		case theme.ColorNameDisabled:
+			return color.NRGBA{107, 114, 128, 255}
+		case theme.ColorNameFocus:
+			return color.NRGBA{0, 210, 235, 90}
+		case theme.ColorNamePrimary:
+			return color.NRGBA{0, 210, 235, 255}
+		case theme.ColorNameInputBackground:
+			return color.NRGBA{24, 32, 43, 255}
+		case theme.ColorNamePlaceHolder:
+			return color.NRGBA{148, 163, 184, 255}
+		case theme.ColorNameMenuBackground:
+			return color.NRGBA{22, 27, 34, 255}
+		case theme.ColorNameOverlayBackground:
+			return color.NRGBA{13, 17, 23, 255}
+		case theme.ColorNameShadow:
+			return color.NRGBA{0, 210, 235, 90}
+		case theme.ColorNameError:
+			return color.NRGBA{248, 113, 113, 255}
+		case theme.ColorNameSuccess:
+			return color.NRGBA{74, 222, 128, 255}
+		case theme.ColorNameWarning:
+			return color.NRGBA{251, 191, 36, 255}
 		}
 	} else {
-		//theme white
 		switch name {
-		//🎨 สีหลัก
-		case theme.ColorNameBackground: //→ พื้นหลังหลักของแอพ สีพื้นหลังสุด *ถ้าไม่มีภาพขั้นกลาง
+		case theme.ColorNameBackground:
+			return color.NRGBA{248, 250, 252, 255}
+		case theme.ColorNameForeground:
+			return color.NRGBA{15, 23, 42, 255}
+		case theme.ColorNameButton:
+			return color.NRGBA{226, 232, 240, 255}
+		case theme.ColorNamePressed:
+			return color.NRGBA{0, 151, 173, 255}
+		case theme.ColorNameHover:
+			return color.NRGBA{15, 23, 42, 24}
+		case theme.ColorNameDisabledButton:
+			return color.NRGBA{203, 213, 225, 255}
+		case theme.ColorNameDisabled:
+			return color.NRGBA{100, 116, 139, 255}
+		case theme.ColorNameFocus:
+			return color.NRGBA{0, 151, 173, 90}
+		case theme.ColorNamePrimary:
+			return color.NRGBA{0, 151, 173, 255}
+		case theme.ColorNameInputBackground:
 			return color.NRGBA{255, 255, 255, 255}
-
-		case theme.ColorNameForeground: //→ สีตัวอักษร/ไอคอน
-			return color.Black
-
-			//🔘 ปุ่ม
-		case theme.ColorNameButton: //→ สีปุ่มปกติ
-			return color.NRGBA{50, 50, 50, 50}
-
-		case theme.ColorNamePressed: //→ ตอนกด***
-			return color.NRGBA{255, 246, 181, 255}
-
-		case theme.ColorNameHover: //→ ตอนเอาเมาส์ชี้
-			return color.NRGBA{255, 255, 255, 50}
-
-		case theme.ColorNameDisabledButton: //→ ปุ่มที่กดไม่ได้***
-			return color.NRGBA{255, 246, 181, 255}
-
-		// 🧠 สถานะทั่วไป
-		case theme.ColorNameDisabled: // → สีของ element ที่ใช้ไม่ได้***
-			return color.NRGBA64{255, 0, 0, 255}
-
-		case theme.ColorNameFocus: // → ตอนถูกเลือก / โฟกัส***
-			return color.NRGBA{50, 50, 50, 40}
-
-		// 🌈 สีหลักของแอพ
-		case theme.ColorNamePrimary: // → สีเด่น (progress bar / highlight / ปุ่มสำคัญ)
-			return color.NRGBA{255, 246, 181, 255}
-
-			//🧾 Input / UI
-		case theme.ColorNameInputBackground: // → พื้นหลังช่อง input / select
-			return color.NRGBA{50, 50, 50, 50}
-
-		case theme.ColorNamePlaceHolder: // → ตัวอักษร placeholder***
-			return color.NRGBA{255, 246, 181, 255}
-
-		// 🪟 Layer / พื้นหลังพิเศษ
-		case theme.ColorNameMenuBackground: // → เมนู (dropdown / popup)
-			return color.NRGBA{255, 255, 255, 50}
-
-		case theme.ColorNameOverlayBackground: // → dialog / overlay
-			return color.NRGBA{230, 230, 230, 255}
-
-		case theme.ColorNameShadow: // → เงา
-			return color.NRGBA{255, 246, 181, 100}
-
-			//⚠️ สถานะพิเศษ
-		case theme.ColorNameError: // → error (แดง)
-			return color.NRGBA{255, 0, 0, 255}
-
-		case theme.ColorNameSuccess: // → success (เขียว)
-			return color.NRGBA{0, 255, 0, 255}
-
-		case theme.ColorNameWarning: // → warning (เหลือง/ส้ม)
-			return color.NRGBA{255, 165, 255, 255}
-
+		case theme.ColorNamePlaceHolder:
+			return color.NRGBA{71, 85, 105, 255}
+		case theme.ColorNameMenuBackground:
+			return color.NRGBA{255, 255, 255, 255}
+		case theme.ColorNameOverlayBackground:
+			return color.NRGBA{241, 245, 249, 255}
+		case theme.ColorNameShadow:
+			return color.NRGBA{0, 151, 173, 70}
+		case theme.ColorNameError:
+			return color.NRGBA{220, 38, 38, 255}
+		case theme.ColorNameSuccess:
+			return color.NRGBA{22, 163, 74, 255}
+		case theme.ColorNameWarning:
+			return color.NRGBA{217, 119, 6, 255}
 		}
 	}
 	return theme.DefaultTheme().Color(name, v)
